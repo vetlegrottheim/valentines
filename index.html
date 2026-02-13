@@ -101,6 +101,10 @@
       position: relative;
     }
 
+    #noBtn.wiggle {
+      animation: wiggle 0.25s ease;
+    }
+
     .single-choice {
       width: 100%;
       max-width: 320px;
@@ -113,6 +117,13 @@
     @keyframes pop {
       from { transform: scale(0.92); opacity: 0; }
       to { transform: scale(1); opacity: 1; }
+    }
+
+    @keyframes wiggle {
+      0% { transform: translateX(0); }
+      25% { transform: translateX(-6px) rotate(-4deg); }
+      50% { transform: translateX(6px) rotate(4deg); }
+      100% { transform: translateX(0); }
     }
 
     .confetti-layer {
@@ -139,9 +150,47 @@
         opacity: 0.9;
       }
     }
+
+    .hearts-layer {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      overflow: hidden;
+      z-index: 9998;
+    }
+
+    .heart {
+      position: absolute;
+      bottom: -24px;
+      font-size: 22px;
+      animation: float-up linear forwards;
+      filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.15));
+    }
+
+    @keyframes float-up {
+      0% {
+        transform: translateY(0) scale(0.9);
+        opacity: 0;
+      }
+      15% {
+        opacity: 1;
+      }
+      100% {
+        transform: translateY(-115vh) translateX(var(--drift, 0px)) scale(1.25);
+        opacity: 0;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      * {
+        animation: none !important;
+        transition: none !important;
+      }
+    }
   </style>
 </head>
 <body>
+  <div class="hearts-layer" id="heartsLayer" aria-hidden="true"></div>
   <div class="confetti-layer" id="confettiLayer" aria-hidden="true"></div>
   <main class="card">
     <img
@@ -167,12 +216,32 @@
     const titleText = document.getElementById("titleText");
     const mainGif = document.getElementById("mainGif");
     const confettiLayer = document.getElementById("confettiLayer");
+    const heartsLayer = document.getElementById("heartsLayer");
 
     let noPressCount = 0;
     let yesScale = 1;
     let isCelebrating = false;
+    const noMessages = ["Er du sikker?", "Tenk én gang til...", "Siste sjanse!"];
+    const isTouchDevice = window.matchMedia("(hover: none), (pointer: coarse)").matches;
+
+    function clamp(value, min, max) {
+      return Math.min(max, Math.max(min, value));
+    }
+
+    function ensureNoButtonAbsolute() {
+      if (noBtn.style.position === "absolute") {
+        return;
+      }
+
+      const zoneRect = buttonZone.getBoundingClientRect();
+      const btnRect = noBtn.getBoundingClientRect();
+      noBtn.style.position = "absolute";
+      noBtn.style.left = `${Math.max(0, btnRect.left - zoneRect.left)}px`;
+      noBtn.style.top = `${Math.max(0, btnRect.top - zoneRect.top)}px`;
+    }
 
     function moveNoButton() {
+      ensureNoButtonAbsolute();
       const zoneRect = buttonZone.getBoundingClientRect();
       const btnRect = noBtn.getBoundingClientRect();
 
@@ -185,6 +254,27 @@
       noBtn.style.position = "absolute";
       noBtn.style.left = `${randomX}px`;
       noBtn.style.top = `${randomY}px`;
+    }
+
+    function teleportNoButton(maxDistance) {
+      ensureNoButtonAbsolute();
+      const zoneRect = buttonZone.getBoundingClientRect();
+      const btnRect = noBtn.getBoundingClientRect();
+      const maxX = Math.max(0, zoneRect.width - btnRect.width);
+      const maxY = Math.max(0, zoneRect.height - btnRect.height);
+      const currentX = parseFloat(noBtn.style.left) || 0;
+      const currentY = parseFloat(noBtn.style.top) || 0;
+      const shiftX = (Math.random() * 2 - 1) * maxDistance;
+      const shiftY = (Math.random() * 2 - 1) * maxDistance;
+
+      noBtn.style.left = `${clamp(currentX + shiftX, 0, maxX)}px`;
+      noBtn.style.top = `${clamp(currentY + shiftY, 0, maxY)}px`;
+    }
+
+    function wiggleNoButton() {
+      noBtn.classList.remove("wiggle");
+      void noBtn.offsetWidth;
+      noBtn.classList.add("wiggle");
     }
 
     function lockToSingleButton() {
@@ -211,6 +301,29 @@
       }, 4200);
     }
 
+    function launchHearts() {
+      const hearts = ["💖", "💕", "💗", "💘", "❤️"];
+      let count = 0;
+      const timer = setInterval(() => {
+        count += 1;
+        const heart = document.createElement("span");
+        heart.className = "heart";
+        heart.textContent = hearts[Math.floor(Math.random() * hearts.length)];
+        heart.style.left = `${5 + Math.random() * 90}%`;
+        heart.style.animationDuration = `${2.8 + Math.random() * 1.6}s`;
+        heart.style.setProperty("--drift", `${(Math.random() * 2 - 1) * 80}px`);
+        heartsLayer.appendChild(heart);
+
+        setTimeout(() => {
+          heart.remove();
+        }, 5000);
+
+        if (count >= 35) {
+          clearInterval(timer);
+        }
+      }, 110);
+    }
+
     function celebrate() {
       if (isCelebrating) {
         return;
@@ -223,10 +336,17 @@
       mainGif.style.transform = "scale(1.02)";
       mainGif.style.filter = "saturate(1.15)";
       launchConfetti();
+      launchHearts();
     }
 
     noBtn.addEventListener("click", () => {
+      if (isCelebrating) {
+        return;
+      }
       noPressCount += 1;
+      if (noPressCount <= noMessages.length) {
+        titleText.textContent = noMessages[noPressCount - 1];
+      }
       yesScale += 0.28;
       yesBtn.style.transform = `scale(${yesScale})`;
       moveNoButton();
@@ -235,6 +355,25 @@
         setTimeout(lockToSingleButton, 450);
       }
     });
+
+    noBtn.addEventListener("mouseenter", () => {
+      if (isCelebrating || isTouchDevice) {
+        return;
+      }
+
+      wiggleNoButton();
+      if (Math.random() < 0.75) {
+        teleportNoButton(70);
+      }
+    });
+
+    noBtn.addEventListener("touchstart", () => {
+      if (isCelebrating) {
+        return;
+      }
+      wiggleNoButton();
+      teleportNoButton(42);
+    }, { passive: true });
 
     yesBtn.addEventListener("click", () => {
       celebrate();
