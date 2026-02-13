@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="no">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Valentine?</title>
+  <style>
+    :root {
+      --bg-1: #fff8f1;
+      --bg-2: #ffd7e2;
+      --card: #ffffffcc;
+      --text: #2f1b24;
+      --yes: #ff4f7b;
+      --yes-pressed: #e63f68;
+      --no: #4a2d38;
+      --shadow: 0 14px 30px rgba(140, 45, 74, 0.18);
+    }
+
+    * {
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      font-family: "Avenir Next", "Segoe UI", sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at 85% 15%, #ffffffaa 0, #ffffff00 35%),
+        linear-gradient(155deg, var(--bg-1), var(--bg-2));
+      padding: 20px;
+    }
+
+    .card {
+      width: min(100%, 420px);
+      background: var(--card);
+      backdrop-filter: blur(6px);
+      border-radius: 24px;
+      box-shadow: var(--shadow);
+      padding: 20px 18px 24px;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .gif {
+      width: 100%;
+      max-height: 270px;
+      object-fit: cover;
+      border-radius: 18px;
+      display: block;
+      margin-bottom: 16px;
+      transition: transform 0.3s ease, filter 0.3s ease;
+    }
+
+    h1 {
+      margin: 0 0 18px;
+      font-size: clamp(1.45rem, 4.5vw, 1.9rem);
+      line-height: 1.2;
+      letter-spacing: 0.02em;
+    }
+
+    .button-zone {
+      position: relative;
+      min-height: 148px;
+    }
+
+    .actions {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 12px;
+      transition: all 0.25s ease;
+    }
+
+    button {
+      border: 0;
+      border-radius: 999px;
+      padding: 14px 24px;
+      font-size: 1rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: transform 0.25s ease, background-color 0.2s ease;
+      color: #fff;
+    }
+
+    #yesBtn {
+      background: var(--yes);
+      transform-origin: center;
+    }
+
+    #yesBtn:active {
+      background: var(--yes-pressed);
+    }
+
+    #noBtn {
+      background: var(--no);
+      position: relative;
+    }
+
+    .single-choice {
+      width: 100%;
+      max-width: 320px;
+      margin-inline: auto;
+      background: linear-gradient(90deg, #ff4f7b, #ff7f63);
+      box-shadow: 0 12px 24px rgba(255, 79, 123, 0.28);
+      animation: pop 0.35s ease;
+    }
+
+    @keyframes pop {
+      from { transform: scale(0.92); opacity: 0; }
+      to { transform: scale(1); opacity: 1; }
+    }
+
+    .confetti-layer {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      overflow: hidden;
+      z-index: 9999;
+    }
+
+    .confetti {
+      position: absolute;
+      top: -16px;
+      width: 10px;
+      height: 16px;
+      opacity: 0.95;
+      border-radius: 2px;
+      animation: fall linear forwards;
+    }
+
+    @keyframes fall {
+      to {
+        transform: translateY(110vh) rotate(540deg);
+        opacity: 0.9;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="confetti-layer" id="confettiLayer" aria-hidden="true"></div>
+  <main class="card">
+    <img
+      id="mainGif"
+      class="gif"
+      src="https://media.giphy.com/media/MDJ9IbxxvDUQM/giphy.gif"
+      alt="Søt valentine-gif"
+    >
+    <h1 id="titleText">Vil du være min Valentine?</h1>
+
+    <section class="button-zone" id="buttonZone">
+      <div class="actions" id="actions">
+        <button id="yesBtn" type="button">ja</button>
+        <button id="noBtn" type="button">nei</button>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const noBtn = document.getElementById("noBtn");
+    const yesBtn = document.getElementById("yesBtn");
+    const buttonZone = document.getElementById("buttonZone");
+    const titleText = document.getElementById("titleText");
+    const mainGif = document.getElementById("mainGif");
+    const confettiLayer = document.getElementById("confettiLayer");
+
+    let noPressCount = 0;
+    let yesScale = 1;
+    let isCelebrating = false;
+
+    function moveNoButton() {
+      const zoneRect = buttonZone.getBoundingClientRect();
+      const btnRect = noBtn.getBoundingClientRect();
+
+      const maxX = Math.max(0, zoneRect.width - btnRect.width);
+      const maxY = Math.max(0, zoneRect.height - btnRect.height);
+
+      const randomX = Math.floor(Math.random() * maxX);
+      const randomY = Math.floor(Math.random() * maxY);
+
+      noBtn.style.position = "absolute";
+      noBtn.style.left = `${randomX}px`;
+      noBtn.style.top = `${randomY}px`;
+    }
+
+    function lockToSingleButton() {
+      buttonZone.innerHTML = '<button class="single-choice" type="button">du har ikke noe valg!</button>';
+      celebrate();
+    }
+
+    function launchConfetti() {
+      const colors = ["#ff4f7b", "#ffbe0b", "#3a86ff", "#06d6a0", "#ff6b6b", "#8338ec"];
+
+      for (let i = 0; i < 120; i += 1) {
+        const piece = document.createElement("span");
+        piece.className = "confetti";
+        piece.style.left = `${Math.random() * 100}%`;
+        piece.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+        piece.style.animationDuration = `${2 + Math.random() * 1.6}s`;
+        piece.style.animationDelay = `${Math.random() * 0.45}s`;
+        piece.style.transform = `translateY(0) rotate(${Math.random() * 360}deg)`;
+        confettiLayer.appendChild(piece);
+      }
+
+      setTimeout(() => {
+        confettiLayer.innerHTML = "";
+      }, 4200);
+    }
+
+    function celebrate() {
+      if (isCelebrating) {
+        return;
+      }
+
+      isCelebrating = true;
+      titleText.textContent = "YAYYYY!!!";
+      mainGif.src = "https://media4.giphy.com/media/v1.Y2lkPTc5MGI3NjExcjVtZGduNzYyc28xM3U1YmY3Z3IzaDE2a2g3c2hobG82ZzRpODViNCZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/OfkGZ5H2H3f8Y/giphy.gif";
+      mainGif.alt = "YAYYYY gif";
+      mainGif.style.transform = "scale(1.02)";
+      mainGif.style.filter = "saturate(1.15)";
+      launchConfetti();
+    }
+
+    noBtn.addEventListener("click", () => {
+      noPressCount += 1;
+      yesScale += 0.28;
+      yesBtn.style.transform = `scale(${yesScale})`;
+      moveNoButton();
+
+      if (noPressCount === 4) {
+        setTimeout(lockToSingleButton, 450);
+      }
+    });
+
+    yesBtn.addEventListener("click", () => {
+      celebrate();
+      yesBtn.textContent = "YAYYYY!!!";
+    });
+  </script>
+</body>
+</html>
